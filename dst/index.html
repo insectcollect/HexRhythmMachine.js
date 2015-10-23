@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style>
+	
+		div.button {
+			font-family:Helvetica,sans-serif;
+			padding:0;
+			position:absolute;
+			top:50%; left:50%;
+			font-size:14px;
+			width:158px;
+			height:42px;
+			line-height:42px;
+			color:#FFF;
+			letter-spacing:0.08em;
+			background-color:#CCC;
+			border:none;
+			text-align:center;
+			-webkit-user-select:none;
+			cursor:pointer;
+			border-radius:3px;
+			letter-spacing:0.12em;
+		}
+		
+		div#play {
+			margin:-48px 0 0 -79px;
+			background-color:#564734;
+		}
+		
+		div#randomize {
+			margin:6px 0 0 -79px;
+			background-color:#CF5678;
+		}
+		
+	</style>
+	<script src="HexRhythmMachine.js"></script>
+</head>
+<body>
+<script>
+
+window.BUFFER_SIZE = 1<<10;
+
+var EM = {
+	L:new Float32Array(Module.HEAPF32.buffer,Module._malloc(BUFFER_SIZE<<2),BUFFER_SIZE),
+	R:new Float32Array(Module.HEAPF32.buffer,Module._malloc(BUFFER_SIZE<<2),BUFFER_SIZE),
+	setup:Module.cwrap('setup','void',['number']),
+	next:Module.cwrap('next','void',['number','number','number']),
+	rand:Module.cwrap('randamize','void',[])
+};
+
+EM.setup((Math.random()*1000)>>0);
+
+var playBtn = document.createElement("div");
+playBtn.innerHTML = "play";
+playBtn.id = "play";
+playBtn.className = "button";
+document.body.appendChild(playBtn);
+
+var randBtn = document.createElement("div");
+randBtn.innerHTML = "randomize";
+randBtn.id = "randomize";
+randBtn.className = "button";
+document.body.appendChild(randBtn);
+
+var play = 0;
+
+var onSampleData = function(e) {
+	if(play==1) {
+		EM.next(EM.L.byteOffset,EM.R.byteOffset,BUFFER_SIZE);
+		e.outputBuffer.getChannelData(0).set(EM.L);
+		e.outputBuffer.getChannelData(1).set(EM.R);		
+	}
+	else {
+		for(var k=0; k<window.BUFFER_SIZE; k++) EM.L[k] = EM.R[k] = 0;
+		e.outputBuffer.getChannelData(0).set(EM.L);
+		e.outputBuffer.getChannelData(1).set(EM.R);
+	}
+}
+var ctx = new (window.AudioContext||window.webkitAudioContext)()
+var scr = ctx.createScriptProcessor(BUFFER_SIZE);
+scr.onaudioprocess = onSampleData;
+scr.connect(ctx.destination);
+var osc = ctx.createOscillator();
+osc.connect(scr);
+osc.start(0);
+
+var playBtnClick = false;
+playBtn.onmouseover = function(e) { playBtn.style.opacity = 0.8; }
+playBtn.onmouseout = function(e) { playBtn.style.opacity = 1.0;	 }
+playBtn.onclick = function(e) { 
+	if(playBtnClick ==false) {
+		playBtnClick = true;
+		playBtn.style.opacity = 0.8;
+		setTimeout(function() {
+			playBtnClick = false;
+			playBtn.style.opacity = 1.0;
+			play=(play)?0:1; 
+			playBtn.innerHTML = (play)?"stop":"play";
+		},150);
+	}
+}
+
+var randBtnClick = false;
+randBtn.onmouseover = function(e) { randBtn.style.opacity = 0.8; }
+randBtn.onmouseout = function(e) { randBtn.style.opacity = 1.0;	 }
+randBtn.onclick = function(e) { 
+	if(randBtnClick ==false) {
+		randBtnClick = true;
+		randBtn.style.opacity = 0.8;
+		setTimeout(function() {
+			randBtnClick = false;
+			randBtn.style.opacity = 1.0; EM.rand(); 
+		},150);
+	}
+}
+</script>
+</body>
+</html>
